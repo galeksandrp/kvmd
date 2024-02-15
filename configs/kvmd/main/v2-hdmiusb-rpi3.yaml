@@ -1,0 +1,94 @@
+# Don't touch this file otherwise your device may stop working.
+# Use override.yaml to modify required settings.
+# You can find a working configuration in /usr/share/kvmd/configs.default/kvmd.
+
+#override: !include [override.d, override.yaml]
+
+#logging: !include logging.yaml
+
+kvmd:
+#    auth: !include auth.yaml
+
+    gpio:
+        drivers:
+            usbip_attach:
+                type: cmd
+                cmd: [/usr/bin/sudo, sh, -c, "HS=10.0.2.3 && UZ=root && usbip attach -r $HS -b $(ssh -i /root/.ssh/id_rsa $UZ@$HS 'ID=$(usbip list -p -l | grep 534d:2109 | cut -d# -f1 | cut -d= -f2) && usbip bind -b $ID 2> /dev/null > /dev/null ; echo $ID')"]
+            usbip_detach0:
+                type: cmd
+                cmd: [/usr/bin/sudo, sh, -c, "usbip detach -p 00"]
+        scheme:
+            usbip_attach_button:
+                driver: usbip_attach
+                pin: 0
+                mode: output
+                switch: false
+            usbip_detach0_button:
+                driver: usbip_detach0
+                pin: 1
+                mode: output
+                switch: false
+        view:
+            table:
+                - ["usbip_attach_button|confirm|USB attach 10.0.2.3/7-1.4"]
+                - ["usbip_detach0_button|confirm|USB detach 00"]
+    hid:
+        type: otg
+
+    atx:
+        type: gpio
+
+    msd:
+        type: otg
+
+    streamer:
+        h264_bitrate:
+            default: 5000
+        resolution:
+            default: 1920x1080
+            available:
+                - 1920x1080
+                - 1600x1200
+                - 1360x768
+                - 1280x1024
+                - 1280x960
+                - 1280x720
+                - 1024x768
+                - 800x600
+                - 720x576
+                - 720x480
+                - 640x480
+        cmd:
+            - "/usr/bin/ustreamer"
+            - "--device=/dev/kvmd-video"
+            - "--persistent"
+#            - "--dv-timings"
+            - "--format=uyvy"
+            - "--resolution={resolution}" # v2-hdmiusb-rpi4.yaml
+            - "--encoder=omx"
+            - "--workers=3"
+            - "--quality={quality}"
+            - "--desired-fps={desired_fps}"
+            - "--drop-same-frames=30"
+            - "--last-as-blank=0"
+            - "--unix={unix}"
+            - "--unix-rm"
+            - "--unix-mode=0660"
+            - "--exit-on-parent-death"
+            - "--process-name-prefix={process_name_prefix}"
+            - "--notify-parent"
+            - "--no-log-colors"
+            - "--sink=kvmd::ustreamer::jpeg"
+            - "--sink-mode=0660"
+            - "--h264-sink=kvmd::ustreamer::h264"
+            - "--h264-sink-mode=0660"
+            - "--h264-bitrate={h264_bitrate}"
+            - "--h264-gop={h264_gop}"
+
+
+vnc:
+    memsink:
+        jpeg:
+            sink: "kvmd::ustreamer::jpeg"
+        h264:
+            sink: "kvmd::ustreamer::h264"
